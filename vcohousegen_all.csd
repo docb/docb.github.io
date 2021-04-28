@@ -27,6 +27,56 @@ opcode master,0,aakkk
   chnmix aR,"mixR"
 endop
 
+;; Channel Helper
+
+/** Sets i-rate value into channel and sets initialization to true. Works together
+  with xchan */
+opcode xchnset, 0, Si
+  SchanName, ival xin
+  Sinit = sprintf("%s_initialized", SchanName)
+  chnset(1, Sinit)
+  chnset(ival, SchanName)
+endop
+
+/** xchan
+  Initializes a channel with initial value if channel has default value of 0 and
+  then returns the current value from the channel. Useful in live coding to define
+  a dynamic point that will be automated or set outside of the instrument that is
+  using the channel.
+
+  Opcode is overloaded to return i- or k- value. Be sure to use xchan:i or xchan:k
+  to specify which value to use.
+*/
+opcode xchan, i,Si
+  SchanName, initVal xin
+
+  Sinit = sprintf("%s_initialized", SchanName)
+  if(chnget:i(Sinit) == 0) then
+    chnset(1, Sinit)
+    chnset(initVal, SchanName)
+  endif
+  xout chnget:i(SchanName)
+endop
+
+/** xchan
+  Initializes a channel with initial value if channel has default value of 0 and
+  then returns the current value from the channel. Useful in live coding to define
+  a dynamic point that will be automated or set outside of the instrument that is
+  using the channel.
+
+  Opcode is overloaded to return i- or k- value. Be sure to use xchan:i or xchan:k
+  to specify which value to use.
+*/
+opcode xchan, k,Si
+  SchanName, initVal xin
+
+  Sinit = sprintf("%s_initialized", SchanName)
+  if(chnget:i(SchanName) == 0) then
+    chnset(1, Sinit)
+    chnset(initVal, SchanName)
+  endif
+  xout chnget:k(SchanName)
+endop
 
 
 ;based on Kickblast by Micah Frank under GPLv3
@@ -412,19 +462,19 @@ opcode decbeat, i, Si
 endop
 
 opcode decplay, 0, SiSiik
-  Spat, itick, Sinstr, idur, ifreq, kamp xin
+  Spat, itick, Sinstr, idur, ifreq, iamp xin
   ivel = decbeat(Spat, itick)
   if(ivel>0) then
-    schedule(Sinstr, 0, idur, ifreq, kamp*ivel )
+    schedule(Sinstr, 0, idur, ifreq, iamp*ivel )
   endif
 endop
-chnset 0.5, "drums"
+
 instr drums
   ipos = p4
-  kdr chnget "drums" 
-  decplay("0000900000009000000090000500900000009000000090000000900000039025",ipos, "snare", p3, 4000, kdr*ampdbfs(-6))
-  decplay("0090",ipos, "mrca", p3, 0, kdr)
-  decplay("90009000900090009000900090009004900090009000900090009000900090999000900090009000900090009000900390009000900090009000900090090090",ipos, "drumskick", p3, 55, kdr*ampdbfs(-6))
+  idr xchan "drums",0.5
+  decplay("0000900000009000000090000500900000009000000090000000900000039025",ipos, "snare", p3, 4000, idr*ampdbfs(-6))
+  decplay("0090",ipos, "mrca", p3, 0, idr)
+  decplay("90009000900090009000900090009004900090009000900090009000900090999000900090009000900090009000900390009000900090009000900090090090",ipos, "drumskick", p3, 55, idr*ampdbfs(-6))
 endin
 
 instr trigOff
