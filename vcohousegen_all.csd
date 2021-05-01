@@ -407,11 +407,11 @@ instr hvs
   iamps2  ftgen 0,0,ilen,-2, 0    ; THE AMPLITUDES FOR ADSYNTH
 
   idivs  ftgen 0,0,ilen,7,1,ilen,0.01
-  kl1=randh(0.5,0.0625,ipathseed)/2+0.75
-  kl2=randh(0.4,0.0625,ipathseed)/2+0.2
+  kl1=randh(0.5,0.0625,ipathseed,1)/2+0.75
+  kl2=randh(0.4,0.0625,ipathseed,1)/2+0.2
   kx loopseg 4,0,0,kl1,0.5,kl1-0.1,0,kl2,0.5,kl2+0.1,0
   ky loopseg 0.25,0,0,0,0.25,0.6,0,0.27,0.25,0.8,0,0.4,0.25,1,0,0.17,0.25,0.6,0
-  kz0 randh 1,0.125,ipathseed
+  kz0 randh 1,0.125,ipathseed,1
   kz scale kz0,1,0,1,-1
   ;printks "%f %f %f\n",0.125,kx,ky,kz
   hvs3 kx,ky,kz,ilen,isize,isize,isize,iamps,ipos,isnap
@@ -420,7 +420,7 @@ instr hvs
   vmultv iamps2, idivs, ilen
   
   if imode >= 0 then
-    kpw randh 0.3,1,ipathseed
+    kpw randh 0.3,1,ipathseed,1
     aoscL vcosynt 0.08, ibasefrq, iratio, iamps,imode,0.5+kpw,0.5
     aoscR vcosynt 0.08, ibasefrq, iratio, iamps2,imode,0.5+kpw,0.5
   else
