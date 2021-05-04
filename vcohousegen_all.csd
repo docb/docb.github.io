@@ -27,7 +27,7 @@ opcode master,0,aakkk
   chnmix aR,"mixR"
 endop
 
-;; Channel Helper
+;; Channel Helper from Steven YI's livecode.orc
 
 /** Sets i-rate value into channel and sets initialization to true. Works together
   with xchan */
@@ -268,14 +268,18 @@ giwave4 ftgen 0,0,2^16,10,1,0.3,0.4,0.2,0,0.05,0,0.1
 giwave5 ftgen 0,0,2^16,10,1,1/2,0,1/4,0,1/6,0,1/8,0,1/10
 giwave[] fillarray giwave0,giwave1,giwave2,giwave3,giwave4,giwave5
 
-gidists[] fillarray 1,2,4,8,9,10,11
+gidists[] fillarray 8,9,10
 opcode gensnap,i,iiiiii
    ilen,icube,id,ip1,ip2,iseed xin
    idist = gidists[id]
+   iparam = ip1
+   if id == 2 then
+     iparam += 0.15
+   endif
    seed iseed
    itablen = ilen*icube*icube*icube
-   print itablen,idist,ip1,ip2,iseed
-   itab ftgentmp 0,0,itablen,21,idist,1,ip1,ip2
+   print itablen,idist,iparam,ip2,iseed
+   itab ftgentmp 0,0,itablen,21,idist,1,iparam,ip2
    ;ftprint itab,1,0,itablen,1,ilen
    xout itab
 endop
@@ -351,8 +355,30 @@ opcode vcosynt,a,iiiiiki
   xout iamp*sumarray(asig)
 endop
 
+gipdf ftgen 0,0,65536,-42,-1,-0.4,0.5,0.4,1,0.5
+opcode yvals,k[],k[]i
+  karr[],ifreq xin
+  ktrig metro ifreq
+  if ktrig == 1 then
+  ks[] init 4
+  kindx = 0
+  while kindx < 4 do
+    ks[kindx] duserrnd gipdf 
+    karr[kindx*2] = ks[kindx]<0?random:k(-ks[kindx],1):random:k(0,1-ks[kindx])
+    karr[kindx*2+1] = karr[kindx*2]+ks[kindx]
+    kindx = kindx + 1
+  od
+  ;printarray ks
+  ;printarray karr
+  printks "%f %f %f %f\n",0,ks[0],ks[1],ks[2],ks[3]
+  printks "%f %f %f %f %f %f %f %f\n",0,karr[0],karr[1],karr[2],karr[3],karr[4],karr[5],karr[6],karr[7]
+  endif
+  xout karr
+endop
+
 givcomode[] fillarray 0,2,4
-chnset 1,"hvsamp"
+chnset 5000,"hvsfilt"
+chnset 0.6,"hvsamp"
 chnset 0.6,"hvsrev"
 chnset 0.1,"hvsdel"
 instr hvs
@@ -395,12 +421,14 @@ instr hvs
      ipathseed random 0,1
   endif
   print iseed,ipathseed,irt,iw,iamp,ibasefrq
-  chnset iseed, "seed"
-  chnset ipathseed, "pathseed"
-  chnset iw,"wave"
-  chnset irt,"scale"
 
-  isnap gensnap 32,isize,3,0.28,0.65,iseed
+  karr[] init 8
+  karr yvals karr,0.03125
+  imult = 2
+  if p11 = 2 then
+    imult = 4
+  endif
+  isnap gensnap 32,isize,p11,p12,50,iseed
   ;isnap gensnap 32,isize,4,0.05,50,iseed
   ipos  ftgen 0,0,1025,-7,0,1025,1024
   iamps  ftgen 0,0,ilen,-2, 0    ; THE AMPLITUDES FOR ADSYNTH
@@ -410,7 +438,13 @@ instr hvs
   kl1=randh(0.5,0.0625,ipathseed,1)/2+0.75
   kl2=randh(0.4,0.0625,ipathseed,1)/2+0.2
   kx loopseg 4,0,0,kl1,0.5,kl1-0.1,0,kl2,0.5,kl2+0.1,0
-  ky loopseg 0.25,0,0,0,0.25,0.6,0,0.27,0.25,0.8,0,0.4,0.25,1,0,0.17,0.25,0.6,0
+  if p10 == 0 then
+    ky loopseg 0.25,0,0,0,0.25,0.6,0,0.27,0.25,0.8,0,0.4,0.25,1,0,0.17,0.25,0.6,0
+  elseif p10 == 1 then
+    ky loopseg 0.25,0,0,0.6,0.25,0,0,0.8,0.25,0.27,0,1,0.25,0.4,0,0.6,0.25,0.17,0
+  else
+    ky loopseg 0.25,0,0,karr[0],0.25,karr[1],0,karr[2],0.25,karr[3],0,karr[4],0.25,karr[5],0,karr[6],0.25,karr[7],0
+  endif
   kz0 randh 1,0.125,ipathseed,1
   kz scale kz0,1,0,1,-1
   ;printks "%f %f %f\n",0.125,kx,ky,kz
@@ -427,14 +461,15 @@ instr hvs
     aoscL adsynt  0.1, ibasefrq, iwave, iratio, iamps, ilen, 0
     aoscR adsynt  0.1, ibasefrq, iwave, iratio, iamps2, ilen, 0
   endif
-  aoscL moogvcf aoscL,4000,0.1
-  aoscR moogvcf aoscR,4000,0.1
+  kfilt chnget "hvsfilt"
+  aoscL moogvcf aoscL,kfilt,0.1
+  aoscR moogvcf aoscR,kfilt,0.1
   aoscL = tanh(aoscL * iamp) 
   aoscR = tanh(aoscR * iamp)
   kamp chnget "hvsamp"
   krev chnget "hvsrev"
   kdel chnget "hvsdel"
-  master aoscL,aoscR,kamp,krev,kdel
+  master aoscL,aoscR,kamp*imult,krev,kdel
 endin
 
 instr trigDrums
@@ -540,8 +575,8 @@ endin
 ;i "hvs" 0.00067 300 [220*9/8] 2 0.312
 ;i "hvs" 0.00067 300 [220*7/6] 2 0.312
 ;i "hvs" 0.00067 300 [220*3/2] 2 0.312
-;i "hvs" 0.00067 3000 [110] 8 0.322 88287413.128 1 6
-;i "hvs" 0.00067 3000 [110] 4 0 0 -1 -1
+;i "hvs" 0.00067 3000 [110] 8 0.322 88287413.128 1 6 0 2 0.005
+;i "hvs" 0.00067 3000 [110] 4 0 6 0.193309 [821927*4294.967296] 0 0 0.04
 
 </CsScore>
 </CsoundSynthesizer>
