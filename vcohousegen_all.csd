@@ -10,6 +10,66 @@ ksmps     = 32
 nchnls    = 2
 0dbfs = 1
 
+opcode Ensemble, aa, aiiikiip
+  ain, idelay, idpth, imin, imax, inumvoice, iwave, icount xin
+  adel init 0
+  ainl init 0
+  ainr init 0
+  alfo init 0
+  al init 0
+  ar init 0
+
+  incr = 1/(inumvoice)
+
+  if (icount == inumvoice) goto out
+  ainl, ainr Ensemble ain, idelay, idpth, imin, imax, inumvoice, iwave, icount + 1
+
+out:
+  iratemax unirand imax
+
+  alfo oscil idpth, iratemax + imin, iwave
+  adel vdelay3 ain/(inumvoice * .5), (idelay + alfo) * 1000, 1000
+  al = ainl + adel * incr * icount
+  ar = ainr + adel * (1 - incr * icount)
+  xout al, ar
+endop
+
+giTabEns ftgen 0,0,65536,10,1,0,0,0,0,0,0,0,0,.05,0
+
+opcode ensemble,aa,aak
+  aR, aL, kmix xin
+  idelay = 0.2
+  idepth = 0.3
+  imin = 0.2
+  imax = 0.2
+  ivoices = 12
+  aLL,aLR Ensemble aL, idelay/10, idepth/100,imin,imax,ivoices,giTabEns
+  aRL,aRR Ensemble aR, idelay/10, idepth/100,imin,imax,ivoices,giTabEns
+  aL ntrpol aL,(aLL+aRL)*6,kmix
+  aR ntrpol aR,(aLR+aRR)*6,kmix
+  xout aL,aR
+endop
+
+opcode hvsmaster,0,aakkkk
+  ainL,ainR,kamp,krev,kdel,kens xin
+  aL = ainL*kamp
+  aR = ainR*kamp
+  kens init 0
+  aL,aR ensemble,aL,aR,kens
+  adL = aL*kdel
+  adR = aR*kdel
+  arL = aL*krev
+  arR = aR*krev
+  chnset adL,"delInL"
+  chnset adR,"delInR"
+  chnset arL,"revInL"
+  chnset arR,"revInR"
+  chnmix aL,"mixL"
+  chnmix aR,"mixR"
+endop
+
+
+
 ;#include "master.orc"
 opcode master,0,aakkk
   ainL,ainR,kamp,krev,kdel xin
@@ -19,10 +79,10 @@ opcode master,0,aakkk
   adR = aR*kdel
   arL = aL*krev
   arR = aR*krev
-  chnmix adL,"delInL"
-  chnmix adR,"delInR"
-  chnmix arL,"revInL"
-  chnmix arR,"revInR"
+  chnset adL,"delInL"
+  chnset adR,"delInR"
+  chnset arL,"revInL"
+  chnset arR,"revInR"
   chnmix aL,"mixL"
   chnmix aR,"mixR"
 endop
@@ -254,7 +314,7 @@ giratio1 ftgen 0,0,32,-2,1,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,
 giratio2 ftgen 0,0,32,-2,1,3,5,7,9,11,13,15,17,19,21,23,25,27,29,31,33,35,37,39,41,43,45,47,49,51,53,55,57,59,61,63
 giratio3 ftgen 0,0,32,-2,1,2,3,4,21/4,6,7,8,8,9,21/2,12,49/4,14,16,16,18,21,24,49/2,27,28,63/2,32,32,36,42,48,49,56,63,64
 giratio4 ftgen 0,0,32,-2,1,9/8,5/4,21/16,3/2,7/4,2,9/4,5/2,21/8,3,7/2,4,9/2,5,21/4,6,7,8,9,10,21/2,12,14,16,18,20,21,24,28,32,36
-giratio5 ftgen 0,0,32,-2,1,9/8,5/4,11/8,3/2,15/8,2,9/4,5/2,11/4,3,15/4,4,9/2,5,11/2,6,15/2,8,9,10,11,12,15,16,18,20,22,24,30,32,36
+giratio5 ftgen 0,0,32,-2,1,9/8,5/4,11/8,3/2,5/3,15/8,2,9/4,5/2,11/4,3,10/3,15/4,4,9/2,5,11/2,6,20/3,15/2,8,9,10,11,12,40/3,15,16,18,20,22,24,30,32,36
 giratio6 ftgen 0,0,32,-2,1,10/9,7/6,21/16,3/2,7/4,2,20/9,7/3,21/8,3,7/2,4,40/9,14/3,21/4,6,7,8,80/9,28/3,21/2,12,14,16,160/9,56/3,21,24,28,32,320/9
 giratio7 ftgen 0,0,32,-2,1,9/8,7/6,21/16,3/2,14/9,7/4,2,9/4,7/3,21/8,3,28/9,7/2,4,9/2,14/3,21/4,6,56/9,7,8,9,28/3,21/2,12,112/9,14,16,18,56/3,21
 giratio8 ftgen 0,0,32,-2,1,21/20,14/11,27/20,40/27,11/7,16/9,2,21/10,28/11,27/10,80/27,22/7,32/9,4,21/5,56/11,27/5,160/27,44/7,64/9,8,42/5,112/11,54/5,320/27,88/7,128/9,16,84/5,224/11,104/5
@@ -381,6 +441,9 @@ chnset 5000,"hvsfilt"
 chnset 0.6,"hvsamp"
 chnset 0.6,"hvsrev"
 chnset 0.1,"hvsdel"
+chnset 0.1,"hvsres"
+
+gipdf ftgen 0,0,65536,-42,-0.9,-0.2,0.5,0.2,0.9,0.5
 instr hvs
   ibasefrq = p4
   ipathseed = p6
@@ -399,12 +462,20 @@ instr hvs
  imode = -1 
   if iw > 5 then
      imode = givcomode[iw - 6]
+  elseif iw == 5 then
+    seed 0
+    ip1 duserrnd gipdf
+    ip2 duserrnd gipdf
+    ip3 duserrnd gipdf
+    ip4 duserrnd gipdf
+    ip5 duserrnd gipdf
+    iwave ftgen 0,0,65536,8,0,65536/6,ip1,65536/6,ip2,65536/6,ip3,65536/6,ip4,65536/6,ip5,65536/6,0
   else
      iwave = giwave[iw]
   endif 
 
   iamp = p5
-  if irt < 3 then
+  if irt < 4 then
      iamp /=2
      ibasefrq/=2
   endif
@@ -434,7 +505,9 @@ instr hvs
   iamps  ftgen 0,0,ilen,-2, 0    ; THE AMPLITUDES FOR ADSYNTH
   iamps2  ftgen 0,0,ilen,-2, 0    ; THE AMPLITUDES FOR ADSYNTH
 
-  idivs  ftgen 0,0,ilen,7,1,ilen,0.01
+  idmp = limit(1-p13,0.0000001,1)
+  idivs ftgentmp 0,0,33,5,1,32,idmp,1
+  
   kl1=randh(0.5,0.0625,ipathseed,1)/2+0.75
   kl2=randh(0.4,0.0625,ipathseed,1)/2+0.2
   kx loopseg 4,0,0,kl1,0.5,kl1-0.1,0,kl2,0.5,kl2+0.1,0
@@ -454,22 +527,24 @@ instr hvs
   vmultv iamps2, idivs, ilen
   
   if imode >= 0 then
-    kpw randh 0.3,1,ipathseed,1
-    aoscL vcosynt 0.08, ibasefrq, iratio, iamps,imode,0.5+kpw,0.5
-    aoscR vcosynt 0.08, ibasefrq, iratio, iamps2,imode,0.5+kpw,0.5
+    kpw randh 0.1,1,ipathseed,1
+    aoscL vcosynt 0.08, ibasefrq, iratio, iamps,imode,0.5+kpw,0.125
+    aoscR vcosynt 0.08, ibasefrq, iratio, iamps2,imode,0.5+kpw,0.125
   else
     aoscL adsynt  0.1, ibasefrq, iwave, iratio, iamps, ilen, 0
     aoscR adsynt  0.1, ibasefrq, iwave, iratio, iamps2, ilen, 0
   endif
   kfilt chnget "hvsfilt"
-  aoscL moogvcf aoscL,kfilt,0.1
-  aoscR moogvcf aoscR,kfilt,0.1
-  aoscL = tanh(aoscL * iamp) 
-  aoscR = tanh(aoscR * iamp)
+  kres chnget "hvsres"
+  aoscL moogvcf aoscL,kfilt,kres
+  aoscR moogvcf aoscR,kfilt,kres
+  aoscL = tanh(aoscL * iamp * imult) 
+  aoscR = tanh(aoscR * iamp * imult)
   kamp chnget "hvsamp"
   krev chnget "hvsrev"
   kdel chnget "hvsdel"
-  master aoscL,aoscR,kamp*imult,krev,kdel
+  kens chnget "hvsens"
+  hvsmaster aoscL,aoscR,kamp,krev,kdel,kens
 endin
 
 instr trigDrums
@@ -535,13 +610,13 @@ instr cdelay
   aTap2L   deltap  kbase * 4
   aTap3L   deltap  kbase * 6
   aTap4L   deltap  kbase * 8
-          delayw   abL + (aTap4L*kfb)     ; write audio into buffer
+          delayw   abR + abL/2 + (aTap4L*kfb)     ; write audio into buffer
   aR delayr 10
   aTap1R  deltap  kbase * 1
   aTap2R  deltap  kbase * 3
   aTap3R  deltap  kbase * 5
   aTap4R  deltap  kbase * 7
-          delayw   abR + (aTap4R*kfb)     ; write audio into buffer
+          delayw   abL + abR/2 + (aTap4R*kfb)     ; write audio into buffer
   aoutL = (aTap1L+aTap2L+aTap3L+aTap4L)*0.8
   aoutR = (aTap1R+aTap2R+aTap3R+aTap4R)*0.8
   chnmix aoutL,"mixL"
